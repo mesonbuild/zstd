@@ -81,17 +81,10 @@ else
     libzstd_deps = []
 endif
 
-libzstd_static = static_library('zstd',
-                  libzstd_srcs,
-                  include_directories: libzstd_includes,
-                  c_args: libzstd_cflags,
-                  dependencies: libzstd_deps,)
-libzstd_shared = shared_library('zstd',
+libzstd = library('zstd',
                   libzstd_srcs,
                   include_directories: libzstd_includes,
                   c_args: libzstd_cflags,
                   dependencies: libzstd_deps,)
 
-zstd_static_dep = declare_dependency(link_with : libzstd_static, include_directories: libzstd_includes)
-zstd_shared_dep = declare_dependency(link_with : libzstd_shared, include_directories: libzstd_includes)
-
+zstd_dep = declare_dependency(link_with : libzstd, include_directories: libzstd_includes)
