@@ -42,6 +42,9 @@ libzstd_includes = [include_directories(common_dir, dictbuilder_dir, compress_di
 
 legacy = get_option('legacy_support')
 if legacy != 'false'
+    if legacy == 'true'
+        legacy = '0'
+    endif
     message('Enabling legacy support back to version 0.' + legacy)
     legacy_int = legacy.to_int()
     libzstd_cflags = ['-DZSTD_LEGACY_SUPPORT=' + legacy]
