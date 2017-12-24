@@ -85,6 +85,7 @@ libzstd = library('zstd',
                   libzstd_srcs,
                   include_directories: libzstd_includes,
                   c_args: libzstd_cflags,
-                  dependencies: libzstd_deps,)
+                  dependencies: libzstd_deps,
+                  version: '1.3.3')
 
 zstd_dep = declare_dependency(link_with : libzstd, include_directories: libzstd_includes)
