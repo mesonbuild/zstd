@@ -89,6 +89,6 @@ libzstd = library('zstd',
                   include_directories: libzstd_includes,
                   c_args: libzstd_cflags,
                   dependencies: libzstd_deps,
-                  version: '1.3.3')
+                  version: meson.project_version())
 
 zstd_dep = declare_dependency(link_with : libzstd, include_directories: libzstd_includes)
