@@ -2,7 +2,7 @@ project('zstd', 'c',
     version: '1.3.3',
     license: 'BSD')
 
-libm = meson.get_compiler('c').find_library('m', required: true)
+libm = meson.get_compiler('c').find_library('m', required: false)
 
 lib_dir = join_paths('lib')
 common_dir = join_paths(lib_dir, 'common')
