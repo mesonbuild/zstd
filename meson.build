@@ -1,94 +1,127 @@
-project('zstd', 'c', 
-    version: '1.3.3',
-    license: 'BSD')
+# #############################################################################
+# Copyright (c) 2018-present     Dima Krasner <dima@dimakrasner.com>
+#                                lzutao <taolzu(at)gmail.com>
+# All rights reserved.
+#
+# This source code is licensed under both the BSD-style license (found in the
+# LICENSE file in the root directory of this source tree) and the GPLv2 (found
+# in the COPYING file in the root directory of this source tree).
+# #############################################################################
 
-libm = meson.get_compiler('c').find_library('m', required: false)
+project('zstd',
+  ['c', 'cpp'],
+  license: ['BSD', 'GPLv2'],
+  default_options : [
+    'c_std=gnu99',
+    'cpp_std=c++11',
+    'buildtype=release'
+  ],
+  version: '1.4.5',
+  meson_version: '>=0.47.0')
 
-lib_dir = join_paths('lib')
-common_dir = join_paths(lib_dir, 'common')
-compress_dir = join_paths(lib_dir, 'compress')
-decompress_dir = join_paths(lib_dir, 'decompress')
-dictbuilder_dir = join_paths(lib_dir, 'dictBuilder')
-deprecated_dir = join_paths(lib_dir, 'deprecated')
+cc = meson.get_compiler('c')
+cxx = meson.get_compiler('cpp')
+pkgconfig = import('pkgconfig')
+windows_mod = import('windows')
 
-libzstd_srcs = [
-    join_paths(common_dir, 'entropy_common.c'),
-    join_paths(common_dir, 'fse_decompress.c'),
-    join_paths(common_dir, 'threading.c'),
-    join_paths(common_dir, 'pool.c'),
-    join_paths(common_dir, 'zstd_common.c'),
-    join_paths(common_dir, 'error_private.c'),
-    join_paths(common_dir, 'xxhash.c'),
-    join_paths(compress_dir, 'fse_compress.c'),
-    join_paths(compress_dir, 'huf_compress.c'),
-    join_paths(compress_dir, 'zstd_compress.c'),
-    join_paths(compress_dir, 'zstd_fast.c'),
-    join_paths(compress_dir, 'zstd_double_fast.c'),
-    join_paths(compress_dir, 'zstd_lazy.c'),
-    join_paths(compress_dir, 'zstd_opt.c'),
-    join_paths(compress_dir, 'zstd_ldm.c'),
-    join_paths(compress_dir, 'zstdmt_compress.c'),
-    join_paths(decompress_dir, 'huf_decompress.c'),
-    join_paths(decompress_dir, 'zstd_decompress.c'),
-    join_paths(dictbuilder_dir, 'cover.c'),
-    join_paths(dictbuilder_dir, 'divsufsort.c'),
-    join_paths(dictbuilder_dir, 'zdict.c'),
-    join_paths(deprecated_dir, 'zbuff_common.c'),
-    join_paths(deprecated_dir, 'zbuff_compress.c'),
-    join_paths(deprecated_dir, 'zbuff_decompress.c')
-]
+host_machine_os = host_machine.system()
+os_windows = 'windows'
+os_linux = 'linux'
+os_darwin = 'darwin'
+os_freebsd = 'freebsd'
+os_sun = 'sunos'
 
-libzstd_includes = [include_directories(common_dir, dictbuilder_dir, compress_dir, lib_dir)]
+cc_id = cc.get_id()
+compiler_gcc = 'gcc'
+compiler_clang = 'clang'
+compiler_msvc = 'msvc'
 
-legacy = get_option('legacy_support')
-if legacy != 'false'
-    if legacy == 'true'
-        legacy = '0'
-    endif
-    message('Enabling legacy support back to version 0.' + legacy)
-    legacy_int = legacy.to_int()
-    libzstd_cflags = ['-DZSTD_LEGACY_SUPPORT=' + legacy]
-
-    legacy_dir = join_paths(lib_dir, 'legacy')
-    libzstd_includes += [include_directories(legacy_dir)]
-    if legacy_int <= 1
-        libzstd_srcs += join_paths(legacy_dir, 'zstd_v01.c')
-    endif
-    if legacy_int <= 2
-        libzstd_srcs += join_paths(legacy_dir, 'zstd_v02.c')
-    endif
-    if legacy_int <= 3
-        libzstd_srcs += join_paths(legacy_dir, 'zstd_v03.c')
-    endif
-    if legacy_int <= 4
-        libzstd_srcs += join_paths(legacy_dir, 'zstd_v04.c')
-    endif
-    if legacy_int <= 5
-        libzstd_srcs += join_paths(legacy_dir, 'zstd_v05.c')
-    endif
-    if legacy_int <= 6
-        libzstd_srcs += join_paths(legacy_dir, 'zstd_v06.c')
-    endif
-    if legacy_int <= 7
-        libzstd_srcs += join_paths(legacy_dir, 'zstd_v07.c')
-    endif
-else
-    libzstd_cflags = []
+if cc_id == compiler_msvc
+  error('MSVC 2019 compiler is not supported and not tested in Zstd')
 endif
 
-if get_option('multithread')
-    message('Enabling multi-threading support')
-    add_global_arguments('-DZSTD_MULTITHREAD', language: 'c')
-    libzstd_deps = [dependency('threads')]
-else
-    libzstd_deps = []
+zstd_version = meson.project_version()
+zstd_libversion = zstd_version
+
+# =============================================================================
+# Installation directories
+# =============================================================================
+
+zstd_prefix = get_option('prefix')
+zstd_bindir = get_option('bindir')
+zstd_datadir = get_option('datadir')
+zstd_mandir = get_option('mandir')
+zstd_docdir = join_paths(zstd_datadir, 'doc', meson.project_name())
+
+# =============================================================================
+# Project options
+# =============================================================================
+
+# Built-in options
+use_debug = get_option('debug')
+buildtype = get_option('buildtype')
+default_library_type = get_option('default_library')
+
+# Custom options
+debug_level = get_option('debug_level')
+legacy_level = get_option('legacy_level')
+use_backtrace = get_option('backtrace')
+use_static_runtime = get_option('static_runtime')
+
+bin_programs = get_option('bin_programs')
+bin_contrib = get_option('bin_contrib')
+bin_tests = get_option('bin_tests')
+
+feature_multi_thread = get_option('multi_thread')
+feature_zlib = get_option('zlib')
+feature_lzma = get_option('lzma')
+feature_lz4 = get_option('lz4')
+
+# =============================================================================
+# Dependencies
+# =============================================================================
+
+libm_dep = cc.find_library('m', required: bin_tests)
+thread_dep = dependency('threads', required: feature_multi_thread)
+use_multi_thread = thread_dep.found()
+# Arguments in dependency should be equivalent to those passed to pkg-config
+zlib_dep = dependency('zlib', required: feature_zlib)
+use_zlib = zlib_dep.found()
+lzma_dep = dependency('liblzma', required: feature_lzma)
+use_lzma = lzma_dep.found()
+lz4_dep = dependency('liblz4', required: feature_lz4)
+use_lz4 = lz4_dep.found()
+
+# =============================================================================
+# Compiler flags
+# =============================================================================
+
+add_project_arguments('-DXXH_NAMESPACE=ZSTD_', language: ['c'])
+
+if [compiler_gcc, compiler_clang].contains(cc_id)
+  common_warning_flags = [ '-Wextra', '-Wundef', '-Wshadow', '-Wcast-align', '-Wcast-qual' ]
+  if cc_id == compiler_clang
+    # Should use Meson's own --werror build option
+    #common_warning_flags += '-Werror'
+    common_warning_flags += ['-Wconversion', '-Wno-sign-conversion', '-Wdocumentation']
+  endif
+  cc_compile_flags = cc.get_supported_arguments(common_warning_flags + ['-Wstrict-prototypes'])
+  cxx_compile_flags = cxx.get_supported_arguments(common_warning_flags)
+  add_project_arguments(cc_compile_flags, language : 'c')
+  add_project_arguments(cxx_compile_flags, language : 'cpp')
+elif cc_id == compiler_msvc
+  msvc_compile_flags = [ '/D_UNICODE', '/DUNICODE' ]
+  if use_multi_thread
+    msvc_compile_flags += '/MP'
+  endif
+  if use_static_runtime
+    msvc_compile_flags += '/MT'
+  endif
+  add_project_arguments(msvc_compile_flags, language: ['c', 'cpp'])
 endif
 
-libzstd = library('zstd',
-                  libzstd_srcs,
-                  include_directories: libzstd_includes,
-                  c_args: libzstd_cflags,
-                  dependencies: libzstd_deps,
-                  version: meson.project_version())
+# =============================================================================
+# Subdirs
+# =============================================================================
 
-zstd_dep = declare_dependency(link_with : libzstd, include_directories: libzstd_includes)
+subdir('build/meson/lib')
