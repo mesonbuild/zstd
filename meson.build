@@ -125,3 +125,15 @@ endif
 # =============================================================================
 
 subdir('build/meson/lib')
+
+if bin_programs
+  subdir('build/meson/programs')
+endif
+
+if bin_tests
+  subdir('build/meson/tests')
+endif
+
+if bin_contrib
+  subdir('build/meson/contrib')
+endif
